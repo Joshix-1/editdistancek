@@ -117,7 +117,7 @@ fn test_remove() {
 fn test_mismatch_128() {
     let mut s = [0u8; 128];
     rand::thread_rng().fill_bytes(&mut s);
-    let mut t = s.clone();
+    let mut t = s;
     for i in 0..128 {
         t[i] = s[i] ^ 1;
         assert_eq!(u8::mismatch(&s, &t), i);
