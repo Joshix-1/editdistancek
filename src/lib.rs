@@ -5,6 +5,35 @@
 
 use std::cmp::{max, min};
 
+/// Bounded UTF-8 edit-distance
+pub fn edit_distance_bounded_utf8(s: &str, t: &str, k: usize) -> Option<usize> {
+    if s.is_ascii() && t.is_ascii() {
+        edit_distance_bounded(s.as_bytes(), t.as_bytes(), k)
+    } else {
+        let s = s.chars().collect::<Box<[_]>>();
+        let t = t.chars().collect::<Box<[_]>>();
+        edit_distance_bounded(&s, &t, k)
+    }
+}
+
+/// Bounded UTF-8 edit-distance
+pub fn edit_distance_bounded_utf8_many<'a>(
+    s: &'a str,
+    strings: impl IntoIterator<Item = &'a str> + 'a,
+    k: usize,
+) -> impl IntoIterator<Item = Option<usize>> + 'a {
+    let chars_s = s.chars().collect::<Box<[_]>>();
+    let s_is_ascii = s.is_ascii();
+    strings.into_iter().map(move |t| {
+        if s_is_ascii && t.is_ascii() {
+            edit_distance_bounded(s.as_bytes(), t.as_bytes(), k)
+        } else {
+            let t = t.chars().collect::<Box<[_]>>();
+            edit_distance_bounded(&chars_s, &t, k)
+        }
+    })
+}
+
 /// Returns edit distance between `s` and `t`.
 pub fn edit_distance<T: Mismatch>(s: &[T], t: &[T]) -> usize {
     edit_distance_bounded(s, t, max(s.len(), t.len())).unwrap()
@@ -76,6 +105,7 @@ impl<T: SimdMismatch> Mismatch for T {
     }
 }
 impl Mismatch for char {}
+impl Mismatch for u32 {}
 
 trait SimdMismatch: Sized + PartialEq {}
 impl SimdMismatch for u8 {}
