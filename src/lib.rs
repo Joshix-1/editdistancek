@@ -3,16 +3,18 @@
 //! # Edit Distance
 //! A library for fast finding the Levenshtein edit distance between `s` and `t`.
 
-use std::cmp::{max, min};
+use std::{
+    cmp::{max, min},
+    mem::transmute,
+};
 
 /// Returns edit distance between `s` and `t`.
 pub fn edit_distance(s: &[u8], t: &[u8]) -> usize {
     edit_distance_bounded(s, t, max(s.len(), t.len())).unwrap()
 }
 
-
 /// If edit distance `d` between `s` and `t` is at most `k`, then returns `Some(d)` otherwise returns `None`.
-pub fn edit_distance_bounded(s: &[u8], t: &[u8], k: usize) -> Option<usize> {
+pub fn edit_distance_bounded<T: PartialEq>(s: &[T], t: &[T], k: usize) -> Option<usize> {
     let (s, t, s_length, t_length) = if s.len() > t.len() {
         (t, s, t.len(), s.len())
     } else {
@@ -55,10 +57,14 @@ pub fn edit_distance_bounded(s: &[u8], t: &[u8], k: usize) -> Option<usize> {
 
 /// Returns the length of longest common prefix `s` and `t` (uses SIMD if it is possible).
 #[inline(always)]
-pub fn mismatch(s: &[u8], t: &[u8]) -> usize {
+pub fn mismatch<T: PartialEq>(s: &[T], t: &[T]) -> usize {
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     {
-        return mismatch_simd(s, t);
+        if size_of::<T>() == 1 {
+            return mismatch_simd(unsafe { transmute::<&[T], &[u8]>(s) }, unsafe {
+                transmute::<&[T], &[u8]>(t)
+            });
+        };
     }
     #[allow(unreachable_code)]
     {
@@ -122,6 +128,7 @@ fn mismatch_simd(s: &[u8], t: &[u8]) -> usize {
     off + mismatch_naive(xs, ys)
 }
 
-fn mismatch_naive(s: &[u8], t: &[u8]) -> usize {
+#[inline(always)]
+fn mismatch_naive<T: PartialEq>(s: &[T], t: &[T]) -> usize {
     s.iter().zip(t).take_while(|(x, y)| x == y).count()
 }
