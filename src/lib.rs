@@ -3,18 +3,15 @@
 //! # Edit Distance
 //! A library for fast finding the Levenshtein edit distance between `s` and `t`.
 
-use std::{
-    cmp::{max, min},
-    mem::transmute,
-};
+use std::cmp::{max, min};
 
 /// Returns edit distance between `s` and `t`.
-pub fn edit_distance(s: &[u8], t: &[u8]) -> usize {
+pub fn edit_distance<T: Mismatch>(s: &[T], t: &[T]) -> usize {
     edit_distance_bounded(s, t, max(s.len(), t.len())).unwrap()
 }
 
 /// If edit distance `d` between `s` and `t` is at most `k`, then returns `Some(d)` otherwise returns `None`.
-pub fn edit_distance_bounded<T: PartialEq>(s: &[T], t: &[T], k: usize) -> Option<usize> {
+pub fn edit_distance_bounded<T: Mismatch>(s: &[T], t: &[T], k: usize) -> Option<usize> {
     let (s, t, s_length, t_length) = if s.len() > t.len() {
         (t, s, t.len(), s.len())
     } else {
@@ -44,7 +41,7 @@ pub fn edit_distance_bounded<T: PartialEq>(s: &[T], t: &[T], k: usize) -> Option
                 if r >= s_length || r + i - shift >= t_length {
                     r
                 } else {
-                    mismatch(&s[r..], &t[(r + i - shift)..]) + r
+                    T::mismatch(&s[r..], &t[(r + i - shift)..]) + r
                 }
             } as isize;
             if i + s_length == t_length + shift && b[i] as usize >= s_length {
@@ -55,28 +52,40 @@ pub fn edit_distance_bounded<T: PartialEq>(s: &[T], t: &[T], k: usize) -> Option
     None
 }
 
-/// Returns the length of longest common prefix `s` and `t` (uses SIMD if it is possible).
-#[inline(always)]
-pub fn mismatch<T: PartialEq>(s: &[T], t: &[T]) -> usize {
-    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-    {
-        if size_of::<T>() == 1 {
-            return mismatch_simd(unsafe { transmute::<&[T], &[u8]>(s) }, unsafe {
-                transmute::<&[T], &[u8]>(t)
-            });
-        };
-    }
-    #[allow(unreachable_code)]
-    {
+/// Trait to allow for conditional compilation
+pub trait Mismatch: Sized + PartialEq {
+    /// Returns the length of longest common prefix `s` and `t`.
+    #[inline(always)]
+    fn mismatch(s: &[Self], t: &[Self]) -> usize {
         mismatch_naive(s, t)
     }
 }
+
+impl<T: SimdMismatch> Mismatch for T {
+    /// Returns the length of longest common prefix `s` and `t` (uses SIMD if it is possible).
+    #[inline(always)]
+    fn mismatch(s: &[Self], t: &[Self]) -> usize {
+        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+        {
+            return mismatch_simd(s, t);
+        }
+        #[allow(unreachable_code)]
+        {
+            mismatch_naive(s, t)
+        }
+    }
+}
+impl Mismatch for char {}
+
+trait SimdMismatch: Sized + PartialEq {}
+impl SimdMismatch for u8 {}
+impl SimdMismatch for i8 {}
 
 /// Returns the length of longest common prefix `s` and `t` (with SIMD optimizations).
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[inline(always)]
 #[allow(dead_code)]
-fn mismatch_simd(s: &[u8], t: &[u8]) -> usize {
+fn mismatch_simd<T: SimdMismatch>(s: &[T], t: &[T]) -> usize {
     let l = s.len().min(t.len());
     let mut xs = &s[..l];
     let mut ys = &t[..l];
