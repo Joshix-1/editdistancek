@@ -9,7 +9,7 @@ rust-version = "1.62"
 readme = "README.md"
 license = "MIT"
 keywords = ["text", "distance", "edit"]
-edition = "2018"
+edition = "2021"
 
 
 [dev-dependencies]
