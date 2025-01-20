@@ -35,11 +35,13 @@ pub fn edit_distance_bounded_utf8_many<'a>(
 }
 
 /// Returns edit distance between `s` and `t`.
+#[inline(always)]
 pub fn edit_distance<T: Mismatch>(s: &[T], t: &[T]) -> usize {
     edit_distance_bounded(s, t, max(s.len(), t.len())).unwrap()
 }
 
 /// If edit distance `d` between `s` and `t` is at most `k`, then returns `Some(d)` otherwise returns `None`.
+#[inline(always)]
 pub fn edit_distance_bounded<T: Mismatch>(s: &[T], t: &[T], k: usize) -> Option<usize> {
     let (s, t, s_length, t_length) = if s.len() > t.len() {
         (t, s, t.len(), s.len())
