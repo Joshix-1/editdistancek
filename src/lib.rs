@@ -21,7 +21,7 @@ pub fn edit_distance_bounded_utf8_many<'a>(
     s: &'a str,
     strings: impl IntoIterator<Item = &'a str> + 'a,
     k: usize,
-) -> impl IntoIterator<Item = Option<usize>> + 'a {
+) -> impl Iterator<Item = Option<usize>> + 'a {
     let chars_s = s.chars().collect::<Box<[_]>>();
     let s_is_ascii = s.is_ascii();
     strings.into_iter().map(move |t| {
