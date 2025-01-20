@@ -31,6 +31,13 @@ fn naive() {
     ];
     for (s, t) in tests {
         assert_eq!(edit_distance(s.as_bytes(), t.as_bytes()), levenshtein(s, t));
+        assert_eq!(
+            edit_distance(
+                &s.chars().collect::<Vec<_>>(),
+                &t.chars().collect::<Vec<_>>(),
+            ),
+            levenshtein(s, t)
+        );
     }
 }
 
