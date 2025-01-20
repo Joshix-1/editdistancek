@@ -6,15 +6,21 @@ use std::cmp::{max, min};
 
 #[test]
 fn test_equal_strings() {
-    let tests = vec!["", "abacaba", "a"];
-    for s in tests.iter() {
+    let tests = ["", "abacaba", "a"];
+    for s in tests {
         assert_eq!(edit_distance(s.as_bytes(), s.as_bytes()), 0);
     }
 }
 
 #[test]
+fn test_i8() {
+    assert_eq!(edit_distance(&[-1i8], &[-1i8]), 0);
+    assert_eq!(edit_distance(&[-1i8, -2i8], &[-2i8]), 1);
+}
+
+#[test]
 fn naive() {
-    let tests = vec![
+    let tests = [
         ("kitten", "sitting"),
         ("book", "back"),
         ("table", "dinner"),
@@ -23,17 +29,14 @@ fn naive() {
         ("", "aba"),
         ("aba", ""),
     ];
-    for (s, t) in tests.iter() {
-        assert_eq!(
-            edit_distance(s.as_bytes(), t.as_bytes()),
-            levenshtein(&s, &t)
-        );
+    for (s, t) in tests {
+        assert_eq!(edit_distance(s.as_bytes(), t.as_bytes()), levenshtein(s, t));
     }
 }
 
 #[test]
 fn test_basic_example() {
-    let tests = vec![
+    let tests = [
         ("kitten", "sitting", 3),
         ("book", "back", 2),
         ("table", "dinner", 5),
@@ -42,7 +45,7 @@ fn test_basic_example() {
         ("", "aba", 3),
         ("aba", "", 3),
     ];
-    for test in tests.iter() {
+    for test in tests {
         assert_eq!(
             Some(test.2),
             edit_distance_bounded(test.0.as_bytes(), test.1.as_bytes(), test.2)
