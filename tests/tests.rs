@@ -1,7 +1,4 @@
-use editdistancek::{
-    edit_distance, edit_distance_bounded, edit_distance_bounded_utf8,
-    edit_distance_bounded_utf8_many, Mismatch as _,
-};
+use editdistancek::{edit_distance, edit_distance_bounded, edit_distance_bounded_utf8, mismatch};
 use levenshtein::levenshtein;
 use rand::RngCore;
 #[allow(unused_imports)]
@@ -25,18 +22,6 @@ fn test_i8() {
 fn test_utf8() {
     assert_eq!(edit_distance_bounded_utf8("abc", "abc", 10), Some(0));
     assert_eq!(edit_distance_bounded_utf8("abc", "abc𓆗", 10), Some(1));
-}
-
-#[test]
-fn test_utf8_many() {
-    assert_eq!(
-        edit_distance_bounded_utf8_many("abc", ["abc", "abc𓆗", "a𓆗"], 10).collect::<Vec<_>>(),
-        vec![Some(0), Some(1), Some(2)],
-    );
-    assert_eq!(
-        edit_distance_bounded_utf8_many("𓆗", ["𓆗", "𓆗𓆙", "ab"], 10).collect::<Vec<_>>(),
-        vec![Some(0), Some(1), Some(2)],
-    );
 }
 
 #[test]
@@ -120,7 +105,7 @@ fn test_mismatch_128() {
     let mut t = s;
     for i in 0..128 {
         t[i] = s[i] ^ 1;
-        assert_eq!(u8::mismatch(&s, &t), i);
+        assert_eq!(mismatch(&s, &t), i);
         t[i] = s[i];
     }
 }
@@ -133,7 +118,7 @@ fn test_mismatch() {
         let mut t = s.clone();
         for i in 0..l {
             t[i] = s[i] ^ 1;
-            assert_eq!(u8::mismatch(&s, &t), i);
+            assert_eq!(mismatch(&s, &t), i);
             t[i] = s[i];
         }
     }
