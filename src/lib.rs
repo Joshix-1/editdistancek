@@ -70,6 +70,15 @@ pub fn edit_distance_bounded<T: PartialEq>(
 
     debug_assert!(s_length <= t_length);
 
+    let k = {
+        let max_dist = s_length.max(t_length);
+        if max_dist < k {
+            max_dist.saturating_add(1)
+        } else {
+            k
+        }
+    };
+
     let diff = t_length - s_length;
     if diff > k {
         return None;
