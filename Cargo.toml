@@ -1,16 +1,17 @@
 [package]
 name = "editdistancek"
-version = "1.0.2"
+version = "0.1.0"
 authors = ["Nikolai Karpov <kimaska@gmail.com>"]
 description = "Fast algorithm for computing edit distance"
 repository = "https://github.com/nkkarpov/editdistancek"
 documentation = "https://github.com/nkkarpov/editdistancek"
-rust-version = "1.62"
 readme = "README.md"
 license = "MIT"
 keywords = ["text", "distance", "edit"]
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib", "lib"]
 
 [dev-dependencies]
 quickcheck = { version = "^1.0.3" }
@@ -29,3 +30,6 @@ panic = "abort"
 opt-level = 3
 lto = true
 strip = true
+
+[dependencies]
+pyo3 = "0.23.4"

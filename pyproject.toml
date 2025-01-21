@@ -1,0 +1,18 @@
+[build-system]
+requires = ["maturin>=1,<2"]
+build-backend = "maturin"
+
+[project]
+name = "editdistancek-rs"
+requires-python = ">=3.12"
+classifiers = ["Programming Language :: Rust"]
+
+[tool.maturin]
+bindings = "pyo3"
+compatibility = "manylinux2014"
+profile = "release"
+strip = true
+python-source = "python"
+module-name = "editdistancek_rs._native"
+
+# building wheel with: podman run --rm -v .:/io ghcr.io/pyo3/maturin build --release --compatibility manylinux_2_17

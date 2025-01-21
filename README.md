@@ -15,28 +15,15 @@ algorithm remains performant even for larger strings.
 The primary objective of this library is to devise a quick solution for the bounded version of the edit distance
 problem. Specifically, it aims to handle scenarios where, given a threshold 'k', it returns the edit distance 'd' if 'd'
 is less than or equal to 'k'. Otherwise, it indicates that the distance exceeds 'k'. This approach addresses the typical
-shortcoming of the classic edit distance algorithm, which tends to be inefficient in these cases. 
+shortcoming of the classic edit distance algorithm, which tends to be inefficient in these cases.
 
-The 'bounded' aspect of this library makes it particularly useful in scenarios where there's a predefined threshold of acceptable dissimilarity. This might be beneficial in time-sensitive applications or when working with very large strings, where calculating the full Levenshtein distance would be computationally prohibitive. 
+The 'bounded' aspect of this library makes it particularly useful in scenarios where there's a predefined threshold of acceptable dissimilarity. This might be beneficial in time-sensitive applications or when working with very large strings, where calculating the full Levenshtein distance would be computationally prohibitive.
 
 P.S. The 'k' in editdistancek refers to the upper bound for the algorithm. In practical terms, this means that the algorithm only computes the Levenshtein edit distance up to this 'k' value.
 
 ## Installation
 
-Add to Cargo.toml
-
-```toml
-[dependecies]
-editdistancek = "1.*"
-```
-
-## Usage
-
-```rust
-edit_distance("kitten".as_bytes(), "sitting".as_bytes()); // => 3
-edit_distance_bounded("kitten".as_bytes(), "sitting".as_bytes(), 3); // => Some(3)
-edit_distance_bounded("kitten".as_bytes(), "sitting".as_bytes(), 2); // => None
-```
+TODO
 
 ## License
 
