@@ -23,7 +23,9 @@ P.S. The 'k' in editdistancek refers to the upper bound for the algorithm. In pr
 
 ## Installation
 
-TODO
+```
+pip install editdistancek-rs
+```
 
 ## License
 
