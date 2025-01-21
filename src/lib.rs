@@ -7,47 +7,37 @@ use std::cmp::{max, min};
 
 /// Bounded UTF-8 edit-distance
 pub fn edit_distance_bounded_utf8(s: &str, t: &str, k: usize) -> Option<usize> {
-    if s.is_ascii() && t.is_ascii() {
-        edit_distance_bounded(s.as_bytes(), t.as_bytes(), k)
-    } else {
-        let s = s.chars().collect::<Box<[_]>>();
-        let t = t.chars().collect::<Box<[_]>>();
-        edit_distance_bounded(&s, &t, k)
-    }
-}
+    use chars_iterator::CharsIterator;
 
-/// Bounded UTF-8 edit-distance
-pub fn edit_distance_bounded_utf8_many<'a>(
-    s: &'a str,
-    strings: impl IntoIterator<Item = &'a str> + 'a,
-    k: usize,
-) -> impl Iterator<Item = Option<usize>> + 'a {
-    let chars_s = s.chars().collect::<Box<[_]>>();
-    let s_is_ascii = s.is_ascii();
-    strings.into_iter().map(move |t| {
-        if s_is_ascii && t.is_ascii() {
-            edit_distance_bounded(s.as_bytes(), t.as_bytes(), k)
-        } else {
-            let t = t.chars().collect::<Box<[_]>>();
-            edit_distance_bounded(&chars_s, &t, k)
-        }
-    })
+    edit_distance_bounded(CharsIterator::from(s), CharsIterator::from(t), k)
 }
 
 /// Returns edit distance between `s` and `t`.
-#[inline(always)]
-pub fn edit_distance<T: Mismatch>(s: &[T], t: &[T]) -> usize {
-    edit_distance_bounded(s, t, max(s.len(), t.len())).unwrap()
+pub fn edit_distance<T: PartialEq>(
+    s: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
+    t: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
+) -> usize {
+    let (s, t) = (s.into_iter(), t.into_iter());
+    let k = s.len().max(t.len());
+    edit_distance_bounded(s, t, k).unwrap()
 }
 
 /// If edit distance `d` between `s` and `t` is at most `k`, then returns `Some(d)` otherwise returns `None`.
 #[inline(always)]
-pub fn edit_distance_bounded<T: Mismatch>(s: &[T], t: &[T], k: usize) -> Option<usize> {
-    let (s, t, s_length, t_length) = if s.len() > t.len() {
-        (t, s, t.len(), s.len())
-    } else {
-        (s, t, s.len(), t.len())
-    };
+pub fn edit_distance_bounded<T: PartialEq>(
+    s: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
+    t: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
+    k: usize,
+) -> Option<usize> {
+    let (s, t) = (s.into_iter(), t.into_iter());
+    let (s_length, t_length) = (s.len(), t.len());
+
+    if s_length > t_length {
+        return edit_distance_bounded(t, s, k);
+    }
+
+    debug_assert!(s_length <= t_length);
+
     let diff = t_length - s_length;
     if diff > k {
         return None;
@@ -72,7 +62,7 @@ pub fn edit_distance_bounded<T: Mismatch>(s: &[T], t: &[T], k: usize) -> Option<
                 if r >= s_length || r + i - shift >= t_length {
                     r
                 } else {
-                    T::mismatch(&s[r..], &t[(r + i - shift)..]) + r
+                    mismatch(s.clone().skip(r), t.clone().skip(r + i - shift)) + r
                 }
             } as isize;
             if i + s_length == t_length + shift && b[i] as usize >= s_length {
@@ -83,93 +73,58 @@ pub fn edit_distance_bounded<T: Mismatch>(s: &[T], t: &[T], k: usize) -> Option<
     None
 }
 
-/// Trait to allow for conditional compilation
-pub trait Mismatch: Sized + PartialEq {
-    /// Returns the length of longest common prefix `s` and `t`.
-    #[inline(always)]
-    fn mismatch(s: &[Self], t: &[Self]) -> usize {
-        mismatch_naive(s, t)
-    }
-}
-
-impl<T: SimdMismatch> Mismatch for T {
-    /// Returns the length of longest common prefix `s` and `t` (uses SIMD if it is possible).
-    #[inline(always)]
-    fn mismatch(s: &[Self], t: &[Self]) -> usize {
-        #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-        {
-            return mismatch_simd(s, t);
-        }
-        #[allow(unreachable_code)]
-        {
-            mismatch_naive(s, t)
-        }
-    }
-}
-impl Mismatch for char {}
-impl Mismatch for u32 {}
-
-trait SimdMismatch: Sized + PartialEq {}
-impl SimdMismatch for u8 {}
-impl SimdMismatch for i8 {}
-
-/// Returns the length of longest common prefix `s` and `t` (with SIMD optimizations).
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[inline(always)]
-#[allow(dead_code)]
-fn mismatch_simd<T: SimdMismatch>(s: &[T], t: &[T]) -> usize {
-    let l = s.len().min(t.len());
-    let mut xs = &s[..l];
-    let mut ys = &t[..l];
-    let mut off = 0;
-    #[cfg(target_feature = "avx2")]
-    {
-        const FULL_MATCH: i32 = -1;
-        unsafe {
-            #[cfg(target_arch = "x86")]
-            use std::arch::x86::*;
-            #[cfg(target_arch = "x86_64")]
-            use std::arch::x86_64::*;
-            while xs.len() >= 32 {
-                let x = _mm256_loadu_si256(xs.as_ptr() as _);
-                let y = _mm256_loadu_si256(ys.as_ptr() as _);
-                let r = _mm256_cmpeq_epi8(x, y);
-                let r = _mm256_movemask_epi8(r);
-                if r != FULL_MATCH {
-                    return off + r.trailing_ones() as usize;
-                }
-                xs = &xs[32..];
-                ys = &ys[32..];
-                off += 32;
+/// Calculate the mismatch between iteratables.
+pub fn mismatch<T: PartialEq>(
+    s: impl IntoIterator<Item = T>,
+    t: impl IntoIterator<Item = T>,
+) -> usize {
+    s.into_iter().zip(t).take_while(|(x, y)| x == y).count()
+}
+
+mod chars_iterator {
+    use std::str::Chars;
+
+    #[derive(Clone)]
+    pub struct CharsIterator<'a> {
+        chars: Chars<'a>,
+        length: usize,
+    }
+
+    impl<'a> From<&'a str> for CharsIterator<'a> {
+        fn from(value: &'a str) -> Self {
+            CharsIterator {
+                chars: value.chars(),
+                length: value.chars().count(),
             }
         }
     }
-    {
-        const FULL_MATCH: i32 = 65535;
-        unsafe {
-            #[cfg(target_arch = "x86")]
-            use std::arch::x86::*;
-            #[cfg(target_arch = "x86_64")]
-            use std::arch::x86_64::*;
 
-            while xs.len() >= 16 {
-                let x = _mm_loadu_si128(xs.as_ptr() as _);
-                let y = _mm_loadu_si128(ys.as_ptr() as _);
-                let r = _mm_cmpeq_epi8(x, y);
-                let r = _mm_movemask_epi8(r);
-                if r != FULL_MATCH {
-                    return off + r.trailing_ones() as usize;
-                }
-                xs = &xs[16..];
-                ys = &ys[16..];
-                off += 16;
-            }
+    impl Iterator for CharsIterator<'_> {
+        type Item = char;
+
+        #[inline(always)]
+        fn next(&mut self) -> Option<Self::Item> {
+            self.length = self.length.saturating_sub(1);
+            self.chars.next()
+        }
+
+        #[inline(always)]
+        fn size_hint(&self) -> (usize, Option<usize>) {
+            (self.length, Some(self.length))
+        }
+
+        #[inline(always)]
+        fn nth(&mut self, n: usize) -> Option<Self::Item> {
+            // override nth for faster skip
+            self.length = self.length.saturating_sub(n).saturating_sub(1);
+            self.chars.nth(n)
         }
     }
-    off + mismatch_naive(xs, ys)
-}
 
-#[inline(always)]
-fn mismatch_naive<T: PartialEq>(s: &[T], t: &[T]) -> usize {
-    s.iter().zip(t).take_while(|(x, y)| x == y).count()
+    impl ExactSizeIterator for CharsIterator<'_> {
+        fn len(&self) -> usize {
+            self.length
+        }
+    }
 }
