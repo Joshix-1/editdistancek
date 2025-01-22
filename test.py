@@ -39,8 +39,8 @@ def main() -> int | str:
     rf_timer = Timer()
 
     for i in range(0, 10_000):
-        word1 = random_string(random, 50 + random.randrange(0, i // 100 + 1))
-        word2 = random_string(random, 50 + random.randrange(0, i // 100 + 1))
+        word1 = random_string(random, 50 + random.randrange(0, i // 10 + 1))
+        word2 = random_string(random, 50 + random.randrange(0, i // 10 + 1))
 
         with our_timer:
             our = our_distance(word1, word2)
