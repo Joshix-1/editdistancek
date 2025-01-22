@@ -21,4 +21,4 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Python build
-      run: python -m build
+      run: pip install .
