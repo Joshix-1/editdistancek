@@ -7,16 +7,18 @@ use std::cmp::{max, min};
 
 use pyo3::prelude::*;
 
+const DEFAULT_K: usize = usize::MAX;
+
 #[pyfunction]
 #[pyo3(signature = (s1, s2, /, k))]
 fn distance(s1: &str, s2: &str, k: usize) -> usize {
-    edit_distance_bounded_utf8(s1, s2, k).unwrap_or(k)
+    edit_distance_utf8(s1, s2, k).unwrap_or(k)
 }
 
 #[pyfunction]
 #[pyo3(signature = (s1, s2, /))]
 fn distance_unbounded(s1: &str, s2: &str) -> usize {
-    edit_distance_unbounded_utf8(s1, s2)
+    edit_distance_utf8(s1, s2, DEFAULT_K).unwrap()
 }
 
 #[pymodule]
@@ -29,20 +31,11 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 /// Bounded UTF-8 edit-distance
 #[inline(always)]
-pub fn edit_distance_bounded_utf8(s: &str, t: &str, k: usize) -> Option<usize> {
+pub fn edit_distance_utf8(s: &str, t: &str, k: usize) -> Option<usize> {
     edit_distance_bounded(
         &s.chars().collect::<Box<_>>(),
         &t.chars().collect::<Box<_>>(),
         k,
-    )
-}
-
-/// Unbounded UTF-8 edit-distance
-#[inline(always)]
-pub fn edit_distance_unbounded_utf8(s: &str, t: &str) -> usize {
-    edit_distance(
-        &s.chars().collect::<Box<_>>(),
-        &t.chars().collect::<Box<_>>(),
     )
 }
 
@@ -52,9 +45,7 @@ pub fn edit_distance<T: PartialEq>(
     s: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
     t: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
 ) -> usize {
-    let (s, t) = (s.into_iter(), t.into_iter());
-    let k = s.len().max(t.len());
-    edit_distance_bounded(s, t, k).unwrap()
+    edit_distance_bounded(s, t, DEFAULT_K).unwrap()
 }
 
 /// If edit distance `d` between `s` and `t` is at most `k`, then returns `Some(d)` otherwise returns `None`.

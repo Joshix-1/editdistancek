@@ -1,4 +1,4 @@
-use editdistancek::{edit_distance, edit_distance_bounded, edit_distance_bounded_utf8, mismatch};
+use editdistancek::{edit_distance, edit_distance_bounded, edit_distance_utf8, mismatch};
 use levenshtein::levenshtein;
 use rand::RngCore;
 #[allow(unused_imports)]
@@ -20,8 +20,10 @@ fn test_i8() {
 
 #[test]
 fn test_utf8() {
-    assert_eq!(edit_distance_bounded_utf8("abc", "abc", 10), Some(0));
-    assert_eq!(edit_distance_bounded_utf8("abc", "abc𓆗", 10), Some(1));
+    assert_eq!(edit_distance_utf8("abc", "abc", 10), Some(0));
+    assert_eq!(edit_distance_utf8("abc", "abc𓆗", 10), Some(1));
+    assert_eq!(edit_distance_utf8("abc", "abc𓆗", 1), Some(1));
+    assert_eq!(edit_distance_utf8("abc", "𓆗𓆗", 1), None);
 }
 
 #[test]
