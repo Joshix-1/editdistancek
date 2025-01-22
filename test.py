@@ -32,15 +32,15 @@ class Timer:
         self.ns += took
         del self.start
 
-def main() -> int | str:
-    random = Random("editdistancek")
+def test(min_length: int) -> None:
+    random = Random(min_length)
 
     our_timer = Timer()
     rf_timer = Timer()
 
     for i in range(0, 10_000):
-        word1 = random_string(random, 50 + random.randrange(0, i // 10 + 1))
-        word2 = random_string(random, 50 + random.randrange(0, i // 10 + 1))
+        word1 = random_string(random, min_length + random.randrange(0, i // 10 + 1))
+        word2 = random_string(random, min_length + random.randrange(0, i // 10 + 1))
 
         with our_timer:
             our = our_distance(word1, word2)
@@ -53,7 +53,8 @@ def main() -> int | str:
     print(f"rapidfuzz:     {rf_timer.ns: 16_} ns")
     print(f"editdistancek: {our_timer.ns: 16_} ns")
 
-    return 0
 
 if __name__ == "__main__":
-    sys.exit(main())
+    test(0)
+    test(100)
+    test(1000)

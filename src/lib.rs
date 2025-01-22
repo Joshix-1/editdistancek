@@ -41,30 +41,24 @@ pub fn edit_distance_utf8(s: &str, t: &str, k: usize) -> Option<usize> {
 
 /// Returns edit distance between `s` and `t`.
 #[inline(always)]
-pub fn edit_distance<T: PartialEq>(
-    s: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
-    t: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
-) -> usize {
+pub fn edit_distance<T: PartialEq>(s: &[T], t: &[T]) -> usize {
     edit_distance_bounded(s, t, DEFAULT_K).unwrap()
 }
 
 /// If edit distance `d` between `s` and `t` is at most `k`, then returns `Some(d)` otherwise returns `None`.
 #[inline(always)]
-pub fn edit_distance_bounded<T: PartialEq>(
-    s: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
-    t: impl IntoIterator<Item = T, IntoIter = impl ExactSizeIterator<Item = T> + Clone>,
-    k: usize,
-) -> Option<usize> {
-    let (s, t) = (s.into_iter(), t.into_iter());
+pub fn edit_distance_bounded<T: PartialEq>(s: &[T], t: &[T], k: usize) -> Option<usize> {
     let (s_length, t_length) = (s.len(), t.len());
 
-    if s_length > t_length {
-        return edit_distance_bounded(t, s, k);
-    }
+    let (s_length, s, t_length, t) = if s_length > t_length {
+        (t_length, t, s_length, s)
+    } else {
+        (s_length, s, t_length, t)
+    };
 
     debug_assert!(s_length <= t_length);
 
-    let k = k.min(s_length.max(t_length));
+    let k = min(k, max(s_length, t_length));
 
     let diff = t_length - s_length;
     if diff > k {
@@ -95,7 +89,7 @@ pub fn edit_distance_bounded<T: PartialEq>(
                 if r >= s_length || r + i - shift >= t_length {
                     r
                 } else {
-                    mismatch(s.clone().skip(r), t.clone().skip(r + i - shift)) + r
+                    mismatch(&s[r..], &t[(r + i - shift)..]) + r
                 }
             } as isize;
             if i + s_length == t_length + shift && b[i] as usize >= s_length {
@@ -108,9 +102,6 @@ pub fn edit_distance_bounded<T: PartialEq>(
 
 #[inline(always)]
 /// Calculate the mismatch between iteratables.
-pub fn mismatch<T: PartialEq>(
-    s: impl IntoIterator<Item = T>,
-    t: impl IntoIterator<Item = T>,
-) -> usize {
-    s.into_iter().zip(t).take_while(|(x, y)| x == y).count()
+pub fn mismatch<T: PartialEq>(s: &[T], t: &[T]) -> usize {
+    s.iter().zip(t).take_while(|(x, y)| x == y).count()
 }
