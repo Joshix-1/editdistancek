@@ -30,17 +30,20 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 /// Bounded UTF-8 edit-distance
 #[inline(always)]
 pub fn edit_distance_bounded_utf8(s: &str, t: &str, k: usize) -> Option<usize> {
-    use chars_iterator::CharsIterator;
-
-    edit_distance_bounded(CharsIterator::from(s), CharsIterator::from(t), k)
+    edit_distance_bounded(
+        &s.chars().collect::<Box<_>>(),
+        &t.chars().collect::<Box<_>>(),
+        k,
+    )
 }
 
 /// Unbounded UTF-8 edit-distance
 #[inline(always)]
 pub fn edit_distance_unbounded_utf8(s: &str, t: &str) -> usize {
-    use chars_iterator::CharsIterator;
-
-    edit_distance(CharsIterator::from(s), CharsIterator::from(t))
+    edit_distance(
+        &s.chars().collect::<Box<_>>(),
+        &t.chars().collect::<Box<_>>(),
+    )
 }
 
 /// Returns edit distance between `s` and `t`.
@@ -119,51 +122,4 @@ pub fn mismatch<T: PartialEq>(
     t: impl IntoIterator<Item = T>,
 ) -> usize {
     s.into_iter().zip(t).take_while(|(x, y)| x == y).count()
-}
-
-mod chars_iterator {
-    use std::str::Chars;
-
-    #[derive(Clone)]
-    pub struct CharsIterator<'a> {
-        chars: Chars<'a>,
-        length: usize,
-    }
-
-    impl<'a> From<&'a str> for CharsIterator<'a> {
-        fn from(value: &'a str) -> Self {
-            CharsIterator {
-                chars: value.chars(),
-                length: value.chars().count(),
-            }
-        }
-    }
-
-    impl Iterator for CharsIterator<'_> {
-        type Item = char;
-
-        #[inline(always)]
-        fn next(&mut self) -> Option<Self::Item> {
-            self.length = self.length.saturating_sub(1);
-            self.chars.next()
-        }
-
-        #[inline(always)]
-        fn size_hint(&self) -> (usize, Option<usize>) {
-            (self.length, Some(self.length))
-        }
-
-        #[inline(always)]
-        fn nth(&mut self, n: usize) -> Option<Self::Item> {
-            // override nth for faster skip
-            self.length = self.length.saturating_sub(n).saturating_sub(1);
-            self.chars.nth(n)
-        }
-    }
-
-    impl ExactSizeIterator for CharsIterator<'_> {
-        fn len(&self) -> usize {
-            self.length
-        }
-    }
 }
