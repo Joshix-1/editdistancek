@@ -32,9 +32,8 @@ lto = true
 strip = true
 
 [dependencies]
-pyo3 = { version = "0.23.4", features = [
+pyo3 = { version = "0.28.2", features = [
     "extension-module",
     "abi3",
     "abi3-py312",
-    "experimental-inspect",
 ] }
