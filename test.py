@@ -3,7 +3,7 @@ import string, sys, time
 
 from random import Random
 
-from editdistancek_rs import distance_unbounded as our_distance
+from editdistancek_rs import distance as our_distance, distance_unbounded as our_unbounded
 from rapidfuzz.distance.Levenshtein import distance as rf_distance
 
 CHARACTERS = (
@@ -32,7 +32,7 @@ class Timer:
         self.ns += took
         del self.start
 
-def test(min_length: int) -> None:
+def test(min_length: int, bounded: bool) -> None:
     random = Random(min_length)
 
     our_timer = Timer()
@@ -42,19 +42,35 @@ def test(min_length: int) -> None:
         word1 = random_string(random, min_length + random.randrange(0, i // 10 + 1))
         word2 = random_string(random, min_length + random.randrange(0, i // 10 + 1))
 
-        with our_timer:
-            our = our_distance(word1, word2)
+        if bounded:
+            k = int(0.7 * len(word1))
 
-        with rf_timer:
-            rf = rf_distance(word1, word2)
+            with our_timer:
+                our = our_distance(word1, word2, k=k)
+
+            with rf_timer:
+                rf = rf_distance(word1, word2, score_cutoff=k)
+
+            if rf > k:
+                rf = k
+        else:
+            with our_timer:
+                our = our_unbounded(word1, word2)
+
+            with rf_timer:
+                rf = rf_distance(word1, word2)
 
         assert_eq(our, rf, (word1, word2))
 
+    print(f"{min_length=}, {bounded=}")
     print(f"rapidfuzz:     {rf_timer.ns: 16_} ns")
     print(f"editdistancek: {our_timer.ns: 16_} ns")
 
 
 if __name__ == "__main__":
-    test(0)
-    test(100)
-    test(1000)
+    test(0, bounded=False)
+    test(100, bounded=False)
+    test(1000, bounded=False)
+    test(0, bounded=True)
+    test(100, bounded=True)
+    test(1000, bounded=True)
