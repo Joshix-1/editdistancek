@@ -23,6 +23,9 @@ pub fn edit_distance_bounded(s: &[u8], t: &[u8], k: usize) -> Option<usize> {
         return None;
     }
 
+    let max_p = 1 + (k - diff) / 2;
+    let max_q = 1 + k / 2 + diff;
+
     let shift = k + 1;
     let helper_arr_len = 2 * k + 3;
     let mut full_helper_arr = vec![-1isize; helper_arr_len * 2];
@@ -35,8 +38,8 @@ pub fn edit_distance_bounded(s: &[u8], t: &[u8], k: usize) -> Option<usize> {
             (&*a, &mut *b)
         };
         let (p, q) = (
-            shift - min(1 + (k - diff) / 2, h),
-            shift + min(1 + k / 2 + diff, h),
+            shift - min(max_p, h),
+            shift + min(max_q, h),
         );
         for i in p..=q {
             b[i] = {
