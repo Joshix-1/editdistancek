@@ -24,13 +24,15 @@ pub fn edit_distance_bounded(s: &[u8], t: &[u8], k: usize) -> Option<usize> {
     }
 
     let shift = k + 1;
-    let (mut a, mut b) = (vec![-1isize; 2 * k + 3], vec![-1isize; 2 * k + 3]);
+    let helper_arr_len = 2 * k + 3;
+    let mut full_helper_arr = vec![-1isize; helper_arr_len * 2];
+    let (a, b) = full_helper_arr.split_at_mut(helper_arr_len);
 
     for h in 0..=k {
         let (a, b) = if (h & 1) == 0 {
-            (&b, &mut a)
+            (&*b, &mut *a)
         } else {
-            (&a, &mut b)
+            (&*a, &mut *b)
         };
         let (p, q) = (
             shift - min(1 + (k - diff) / 2, h),
