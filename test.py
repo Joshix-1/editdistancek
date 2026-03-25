@@ -1,10 +1,9 @@
-#!/usr/bin/env -S python3 -Xdev
+#!/usr/bin/env python3
 import string, sys, time
 
 from random import Random
 
 from editdistancek_rs import distance as our_distance, distance_unbounded as our_unbounded
-
 from rapidfuzz.distance.Levenshtein import distance as rf_distance
 
 CHARACTERS = (

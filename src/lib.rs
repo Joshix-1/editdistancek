@@ -6,20 +6,19 @@
 use std::cmp::{max, min};
 
 use pyo3::prelude::*;
-use pyo3::types::PyString;
 
 const DEFAULT_K: usize = usize::MAX;
 
 #[pyfunction]
 #[pyo3(signature = (s1, s2, /, k))]
-fn distance(s1: Bound<'_, PyString>, s2: Bound<'_, PyString>, k: usize) -> PyResult<usize> {
-    Ok(edit_distance_python(s1, s2, k)?.unwrap_or(k))
+fn distance(s1: &str, s2: &str, k: usize) -> usize {
+    edit_distance_utf8(s1, s2, k).unwrap_or(k)
 }
 
 #[pyfunction]
 #[pyo3(signature = (s1, s2, /))]
-fn distance_unbounded(s1: Bound<'_, PyString>, s2: Bound<'_, PyString>) -> PyResult<usize> {
-    Ok(edit_distance_python(s1, s2, DEFAULT_K)?.unwrap())
+fn distance_unbounded(s1: &str, s2: &str) -> usize {
+    edit_distance_utf8(s1, s2, DEFAULT_K).unwrap()
 }
 
 #[pymodule]
@@ -28,26 +27,6 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(distance_unbounded, m)?)?;
 
     Ok(())
-}
-
-#[inline(always)]
-fn edit_distance_python(s1: Bound<'_, PyString>, s2: Bound<'_, PyString>, k: usize) -> PyResult<Option<usize>> {
-    let d1 = unsafe { s1.data() }?;
-    let d2 = unsafe { s2.data() }?;
-
-    use pyo3::types::PyStringData::*;
-
-    match (d1, d2) {
-        (Ucs1(i1), Ucs1(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-        (Ucs2(i1), Ucs2(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-        (Ucs4(i1), Ucs4(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-        (Ucs1(i1), Ucs2(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-        (Ucs1(i1), Ucs4(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-        (Ucs2(i1), Ucs1(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-        (Ucs2(i1), Ucs4(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-        (Ucs4(i1), Ucs1(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-        (Ucs4(i1), Ucs2(i2)) => Ok(edit_distance_bounded(i1, i2, k)),
-    }
 }
 
 /// Bounded UTF-8 edit-distance
@@ -62,65 +41,17 @@ pub fn edit_distance_utf8(s: &str, t: &str, k: usize) -> Option<usize> {
 
 /// Returns edit distance between `s` and `t`.
 #[inline(always)]
-pub fn edit_distance<T: OwnEq<T>>(s: &[T], t: &[T]) -> usize {
+pub fn edit_distance<T: PartialEq>(s: &[T], t: &[T]) -> usize {
     edit_distance_bounded(s, t, DEFAULT_K).unwrap()
 }
 
-/// Trait
-pub trait OwnEq<T> {
-    /// eq
-    fn equals(&self, rhs: &T) -> bool;
-}
-
-macro_rules! generate_self_eq {
-    ($typ:ty) => {
-        impl OwnEq<$typ> for $typ {
-            #[inline(always)]
-            fn equals(&self, rhs: &$typ) -> bool {
-                self == rhs
-            }
-        }
-    };
-}
-generate_self_eq!(char);
-generate_self_eq!(u8);
-generate_self_eq!(u16);
-generate_self_eq!(u32);
-
-macro_rules! generate_eq {
-    ($typ2:ty, $typ:ty) => {
-        impl OwnEq<$typ> for $typ2 {
-            #[inline(always)]
-            fn equals(&self, rhs: &$typ) -> bool {
-                let s: $typ = (*self).into();
-
-                s == *rhs
-            }
-        }
-        impl OwnEq<$typ2> for $typ {
-            #[inline(always)]
-            fn equals(&self, rhs: &$typ2) -> bool {
-                let r: $typ = (*rhs).into();
-
-                *self == r
-            }
-        }
-    };
-}
-generate_eq!(u8, u16);
-generate_eq!(u8, u32);
-generate_eq!(u16, u32);
-
-
 /// If edit distance `d` between `s` and `t` is at most `k`, then returns `Some(d)` otherwise returns `None`.
 #[inline(always)]
-pub fn edit_distance_bounded<T, K>(s: &[T], t: &[K], k: usize) -> Option<usize>
-    where T: OwnEq<K>, K: OwnEq<T>
-{
+pub fn edit_distance_bounded<T: PartialEq>(s: &[T], t: &[T], k: usize) -> Option<usize> {
     let (s_length, t_length) = (s.len(), t.len());
 
     let (s_length, s, t_length, t) = if s_length > t_length {
-        return edit_distance_bounded(t, s, k);
+        (t_length, t, s_length, s)
     } else {
         (s_length, s, t_length, t)
     };
@@ -171,6 +102,6 @@ pub fn edit_distance_bounded<T, K>(s: &[T], t: &[K], k: usize) -> Option<usize>
 
 #[inline(always)]
 /// Calculate the mismatch between iteratables.
-pub fn mismatch<T: OwnEq<K>, K>(s: &[T], t: &[K]) -> usize {
-    s.iter().zip(t).take_while(|(x, y)| x.equals(y)).count()
+pub fn mismatch<T: PartialEq>(s: &[T], t: &[T]) -> usize {
+    s.iter().zip(t).take_while(|(x, y)| x == y).count()
 }
